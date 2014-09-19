@@ -13,6 +13,7 @@ void test_manager_inc()
     for (int i = 0; i < 3; ++i) {
         TestWork work;
         ptr->add_work(work);
+	cout<<"The "<<i+1<<" Work works!"<<endl;
     }
     
     sleep(600);
