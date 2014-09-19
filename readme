@@ -1,0 +1,43 @@
+1,Linux环境下用C++写的线程池，目录下包含线程池的源码文件以及一个main.cc文件，main文件主要是用来测试线程池的。所有文件的编译都写到Makefile中了，一看知道了。
+
+2，一共四个类，ThreadPool，WorkQueue，WorkBase，TestWork。
+   ThreadPool类，成员变量不说了，只说一下函数。
+       bool initial();                    
+	      初始化，创建指定数量的线程，也可能包括一个管理线程。
+       bool decrease(); 
+	      设置退出标志，结果是只保留最小线程数，多余的都会退出。
+       bool decrease_to_none(); 
+	      所有线程退出，但保证每个线程在完成工作后退出。
+       bool increase_thread(unsigned int number); 
+	      增加线程到线程池，增加数量为number
+       bool check_decrease(); 
+	      worker线程在每次完成工作后，都会调用此函数检查一下自己是否该退出
+       bool create_manager();
+	      若初始化时没有创建管理线程，之后调用此函数也可以创建。
+       void manage_inc(ofstream& os);
+	      管理线程的工作，增加线程
+       void manage_dec(ofstream& os);
+          管理线程的工作，减少线程
+       bool add_work(WorkBase* work);
+	   bool add_work(WorkBase& work);
+          添加work的接口
+       static void* process(void* arg);
+	      普通worker线程的主例程
+       static void* manage(void* arg);
+	      管理线程的主例程
+	WorkQueue，WorkBase，TestWork这几个类都比较简单。要注意的一点是，工作队列中的元素是WorkBase*类型的指针，利用多态，则可以提供一致的接口给worker线程，
+	具体的工作应该在WorkBase的派生类的do_work()函数中实现。要让线程做其他工作，只需写一个WorkBase的子类然后重写do_work()函数就可以了。TestWork类就是如此，
+	是用来测试线程池的。
+	
+3，把线程池中的线程池放在两个链表中管理，一个是idle链表，空闲线程都在这个链表中，一个是busy链表，正在do_work的线程都放在这个链表中。
+
+4，给WorkQueue设置了两个添加work的接口，add_work(WorkBase*)和add_work(WorkBase) ，就是说即可接受指针类型，也可接受引用类型，在add_work内部，都再次复制了工
+   作对象，即重新new了一个，以防止不适当的释放对象，而线程处理完一个work后，都会delete工作对象。用户不管是传入局部变量还是动态分配的工作对象，都可妥善处理。
+   （用户要负责delete自己new的对象）。另外，由于要复制工作对象，而又只能得到基类的指针或引用，所以WorkBase及其派生类都必须提供一个clone()函数，这个函数在基
+   类中被声明为虚函数。clone函数很简单，return new(*this)即可，但是又带来了新的问题，即有可能需要工作类提供一个复制构造函数，这取决于工作类的成员变量中有没
+   有指针。	
+   
+5, 终止线程没有使用pthread_cancel函数，而是用标志位提醒每个线程自觉退出。
+   
+6，水平有限，写线程池只是为了学习。
+   因为Linux中没有安装中文输入法，不得已源码中使用了很蹩脚的英文注释。
